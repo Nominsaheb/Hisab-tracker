@@ -1328,6 +1328,8 @@ input, select, textarea {
     }
     .outline-input label { font-size: 12px !important; }
     .btn-gradient-primary, .btn-gradient-success { padding: 12px 20px !important; font-size: 14px !important; }
+   .modern-detail-header { margin: 1rem; padding: 24px 20px; border-radius: 32px;
+   }
 }
 
 /* ========== পুনরাবৃত্তি আইটেম স্টাইল ========== */
