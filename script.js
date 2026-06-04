@@ -687,8 +687,15 @@ function renderRecurringList() {
   `).join('');
 }
 
+// ========== শুধুমাত্র আপডেট করা showRecurringModal ফাংশন ==========
 function showRecurringModal(editIndex = -1) {
   const rule = editIndex >= 0 ? recurringRules[editIndex] : null;
+
+  // ক্যাটাগরি লোড করার জন্য একটি হেলপার ফাংশন
+  const getCategoriesForType = (type) => {
+      return type === 'income' ? categories.income : categories.expense;
+  };
+
   Swal.fire({
     title: rule ? '✏️ নিয়ম সম্পাদনা' : '➕ নতুন নিয়ম',
     html: `
@@ -698,9 +705,17 @@ function showRecurringModal(editIndex = -1) {
       </select>
       <input id="recDesc" placeholder="বিবরণ (যেমন: বিদ্যুৎ বিল)" value="${rule ? rule.description : ''}" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;">
       <input id="recAmount" type="number" placeholder="পরিমাণ (৳)" value="${rule ? rule.amount : ''}" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;">
-      <select id="recCategory" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;">${(rule && rule.type === 'income' ? categories.income : categories.expense).map(c => `<option ${rule && rule.category === c ? 'selected' : ''}>${c}</option>`).join('')}</select>
-      <select id="recPayment" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;">${paymentMethods.map(p => `<option ${rule && rule.payment === p ? 'selected' : ''}>${p}</option>`).join('')}</select>
-      <select id="recFrequency" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;"><option value="weekly" ${rule && rule.frequency === 'weekly' ? 'selected' : ''}>সাপ্তাহিক (প্রতি 7 দিনে)</option><option value="monthly" ${rule && rule.frequency === 'monthly' ? 'selected' : ''}>মাসিক (প্রতি মাসে)</option><option value="yearly" ${rule && rule.frequency === 'yearly' ? 'selected' : ''}>বার্ষিক (প্রতি বছরে)</option></select>
+      <select id="recCategory" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;">
+        ${getCategoriesForType(rule ? rule.type : 'income').map(c => `<option ${rule && rule.category === c ? 'selected' : ''}>${c}</option>`).join('')}
+      </select>
+      <select id="recPayment" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;">
+        ${paymentMethods.map(p => `<option ${rule && rule.payment === p ? 'selected' : ''}>${p}</option>`).join('')}
+      </select>
+      <select id="recFrequency" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;">
+        <option value="weekly" ${rule && rule.frequency === 'weekly' ? 'selected' : ''}>সাপ্তাহিক (প্রতি 7 দিনে)</option>
+        <option value="monthly" ${rule && rule.frequency === 'monthly' ? 'selected' : ''}>মাসিক (প্রতি মাসে)</option>
+        <option value="yearly" ${rule && rule.frequency === 'yearly' ? 'selected' : ''}>বার্ষিক (প্রতি বছরে)</option>
+      </select>
       <input id="recNextDate" type="date" placeholder="পরবর্তী কার্যকর তারিখ" value="${rule ? rule.nextDate || new Date().toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}" style="width:100%; margin-bottom:12px; padding:12px; border-radius:16px;">
       <textarea id="recNote" placeholder="নোট (ঐচ্ছিক)" rows="2" style="width:100%; padding:12px; border-radius:16px;">${rule ? rule.note || '' : ''}</textarea>
     `,
@@ -710,21 +725,49 @@ function showRecurringModal(editIndex = -1) {
     customClass: {
       popup: 'responsive-payment-popup'
     },
+    didOpen: () => {
+        // ড্রপডাউন পরিবর্তনের সময় ক্যাটাগরি আপডেট করার জন্য ইভেন্ট লিসেনার
+        const typeSelect = document.getElementById('recType');
+        const categorySelect = document.getElementById('recCategory');
+        
+        const updateCategories = () => {
+            const selectedType = typeSelect.value;
+            const currentCategoryValue = categorySelect.value;
+            const categoriesForType = getCategoriesForType(selectedType);
+            
+            // HTML পুনরায় তৈরি করা
+            categorySelect.innerHTML = categoriesForType.map(c => `<option value="${c}" ${currentCategoryValue === c ? 'selected' : ''}>${c}</option>`).join('');
+        };
+        
+        typeSelect.addEventListener('change', updateCategories);
+    },
     preConfirm: () => {
       const type = document.getElementById('recType').value;
       const desc = document.getElementById('recDesc').value.trim();
       const amt = parseFloat(document.getElementById('recAmount').value);
+      const category = document.getElementById('recCategory').value;
+      const payment = document.getElementById('recPayment').value;
+      const frequency = document.getElementById('recFrequency').value;
+      const nextDate = document.getElementById('recNextDate').value;
+      const note = document.getElementById('recNote').value;
+
       if (!desc || !amt) return Swal.showValidationMessage('বিবরণ ও পরিমাণ দিন');
       if (amt <= 0) return Swal.showValidationMessage('পরিমাণ অবশ্যই 0 এর বেশি হতে হবে');
+      
+      // ক্যাটাগরি ভ্যালিডেশন (ঐ টাইপের ক্যাটাগরি লিস্টে আছে কিনা)
+      if (!getCategoriesForType(type).includes(category)) {
+          return Swal.showValidationMessage('সিলেক্টেড টাইপের জন্য সঠিক ক্যাটাগরি সিলেক্ট করুন');
+      }
+
       return {
         type,
         description: desc,
         amount: amt,
-        category: document.getElementById('recCategory').value,
-        payment: document.getElementById('recPayment').value,
-        frequency: document.getElementById('recFrequency').value,
-        nextDate: document.getElementById('recNextDate').value,
-        note: document.getElementById('recNote').value
+        category: category,
+        payment: payment,
+        frequency: frequency,
+        nextDate: nextDate,
+        note: note
       };
     }
   }).then(res => {
@@ -737,15 +780,6 @@ function showRecurringModal(editIndex = -1) {
       showToast(editIndex >= 0 ? '✅ নিয়ম আপডেট হয়েছে' : '✅ নতুন নিয়ম যোগ হয়েছে');
     }
   });
-}
-
-function deleteRecurring(idx) {
-  if (confirm('❓ এই নিয়মটি মুছে ফেলতে চান?')) {
-    recurringRules.splice(idx, 1);
-    saveRecurringRules();
-    renderRecurringList();
-    showToast('🗑️ নিয়মটি মুছে ফেলা হয়েছে');
-  }
 }
 
 // ========== ক্যালকুলেটর ফাংশন ==========
