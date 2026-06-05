@@ -1310,6 +1310,9 @@ input, select, textarea {
         padding: 24px 20px;
         border-radius: 32px;
     }
+   .swal2-html-container {
+    padding: 16px 0 0 0! important;
+    }
 }
 
 /* ========== পুনরাবৃত্তি আইটেম স্টাইল ========== */
